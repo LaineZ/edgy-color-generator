@@ -14,3 +14,15 @@ main {
     display: flex;
     gap: 1em;
 }
+
+.color-picker {
+    position: relative;
+    width: fit-content;
+}
+
+.color-picker-dropdown {
+    position: absolute;
+    background-color: aqua;
+    z-index: 2;
+    width: 200px;
+}

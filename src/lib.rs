@@ -152,26 +152,6 @@ pub fn main_js() -> Result<(), JsValue> {
     let app_clone = app.clone();
 
     event_handler!(
-        "#background_color_input",
-        "change",
-        Closure::<dyn FnMut(web_sys::MouseEvent)>::new(move |_event| {
-            let selector = query_selector("#background_color_input").unwrap();
-            let node_value = selector.dyn_into::<HtmlInputElement>().unwrap().value();
-            let hex = &node_value[1..];
-
-            let r = u8::from_str_radix(&hex[0..2], 16).unwrap_or(0);
-            let g = u8::from_str_radix(&hex[2..4], 16).unwrap_or(0);
-            let b = u8::from_str_radix(&hex[4..6], 16).unwrap_or(0);
-
-            log::info!("{r} {g} {b} {hex}");
-
-            app_clone.borrow_mut().context.theme.background = Rgb565::new(r, g, b);
-        })
-    );
-
-    let app_clone = app.clone();
-
-    event_handler!(
         ".simulator-window canvas",
         "mousemove",
         Closure::<dyn FnMut(web_sys::MouseEvent)>::new(move |event: MouseEvent| {
