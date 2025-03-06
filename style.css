@@ -1,0 +1,16 @@
+body {
+    margin: 0;
+    padding: 0;
+}
+
+.simulator-window canvas {
+    border: 2px solid red;
+}
+
+main {
+    margin-left: auto;
+    margin-right: auto;
+    width: fit-content;
+    display: flex;
+    gap: 1em;
+}
