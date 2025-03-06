@@ -20,7 +20,7 @@ use embedded_graphics_web_simulator::{
     display::WebSimulatorDisplay, output_settings::OutputSettingsBuilder,
 };
 use wasm_bindgen::prelude::*;
-use web_sys::{window, Element, HtmlElement, HtmlInputElement, MouseEvent, Window};
+use web_sys::{window, Element, HtmlInputElement, MouseEvent};
 
 #[macro_export]
 macro_rules! event_handler {
