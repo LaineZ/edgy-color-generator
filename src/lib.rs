@@ -1,7 +1,4 @@
-use std::{
-    cell::{OnceCell, RefCell},
-    sync::Arc,
-};
+use std::{cell::RefCell, sync::Arc};
 
 use edgy::{
     embedded_graphics::{
@@ -9,18 +6,16 @@ use edgy::{
         pixelcolor::Rgb565,
         prelude::*,
         text,
-    },
-    widgets::{
+    }, margin, widgets::{
         linear_layout::{LayoutAlignment, LinearLayoutBuilder},
         UiBuilder,
-    },
-    SystemEvent, Theme, UiContext,
+    }, SystemEvent, Theme, UiContext
 };
 use embedded_graphics_web_simulator::{
     display::WebSimulatorDisplay, output_settings::OutputSettingsBuilder,
 };
 use wasm_bindgen::prelude::*;
-use web_sys::{window, Element, HtmlInputElement, MouseEvent};
+use web_sys::{window, Element, MouseEvent};
 
 #[macro_export]
 macro_rules! event_handler {
@@ -79,13 +74,17 @@ impl<'a> App<'a> {
                 style,
             );
 
-            layout_builder.button("Increase", &FONT_6X9, move || {
-                *counter.borrow_mut() += 1;
+            layout_builder.margin_layout(margin!(5), |ui| {
+                ui.button("Increase", &FONT_6X9, move || {
+                    *counter.borrow_mut() += 1;
+                });
             });
 
             let counter = self.counter.clone();
-            layout_builder.button("Descrease", &FONT_6X9, move || {
-                *counter.borrow_mut() -= 1;
+            layout_builder.margin_layout(margin!(5), |ui| {
+                ui.button("Decrease", &FONT_6X9, move || {
+                    *counter.borrow_mut() -= 1;
+                });
             });
 
             layout_builder.finish()
@@ -124,9 +123,6 @@ pub fn main_js() -> Result<(), JsValue> {
     wasm_logger::init(wasm_logger::Config::new(log::Level::Debug));
     console_error_panic_hook::set_once();
 
-    let window = web_sys::window().expect("no global `window` exists");
-    let document = window.document().expect("should have a document on window");
-
     let app = Arc::new(RefCell::new(App::new(query_selector(".simulator-window"))));
     app.borrow_mut().setup();
 
@@ -164,9 +160,19 @@ pub fn main_js() -> Result<(), JsValue> {
 
             let pos = Point::new(offset_x, offset_y) / SCALE as i32;
 
-            log::info!("{pos}");
+            //log::info!("{pos}");
 
             app_clone.borrow_mut().input(SystemEvent::Move(pos));
+        })
+    );
+
+    let app_clone = app.clone();
+    event_handler!(
+        "#debug-toggle",
+        "click",
+        Closure::<dyn FnMut(web_sys::MouseEvent)>::new(move |event: MouseEvent| {
+            let mut borrow = app_clone.borrow_mut();
+            borrow.context.debug_mode = !borrow.context.debug_mode;
         })
     );
 

@@ -47,14 +47,19 @@ export class Rgb565 {
      * @param {*} green green component (6 bit)
      * @param {*} blue  blue component (5 bit)
      */
+
+    red = 0;
+    green = 0;
+    blue = 0;
+
     constructor(redOrColor, green = undefined, blue = undefined) {
         if (green === undefined && blue === undefined) {
             this.value = redOrColor & 0xFFFF;
         } else {
-            const r = (redOrColor >> 3) & 0x1F;
-            const g = (green >> 2) & 0x3F;
-            const b = (blue >> 3) & 0x1F;
-            this.value = (r << 11) | (g << 5) | b;
+            this.red = (redOrColor >> 3) & 0x1F;
+            this.green = (green >> 2) & 0x3F;
+            this.blue = (blue >> 3) & 0x1F;
+            this.value = (this.red << 11) | (this.green << 5) | this.blue;
         }
     }
 
@@ -66,10 +71,30 @@ export class Rgb565 {
     }
 
     rgb888() {
-        let r = ((this.value >> 11) & 0x1F) * 8;
-        let g = ((this.value >> 5) & 0x3F) * 4;
-        let b = (this.value & 0x1F) * 8;
-        return new Rgb888(r, g, b);
+        const R8 = ( this.red * 527 + 23 ) >> 6;
+        const G8 = ( this.green * 259 + 33 ) >> 6;
+        const B8 = ( this.blue * 527 + 23 ) >> 6;
+        return new Rgb888(R8 * 2, G8 * 2, B8 * 2);
+    }
+
+    static fromHSV(h, s, v) {
+        let c = v * s;
+        let x = c * (1 - Math.abs((h / 60) % 2 - 1));
+        let m = v - c;
+        let r = 0, g = 0, b = 0;
+
+        if (h < 60) { r = c; g = x; b = 0; }
+        else if (h < 120) { r = x; g = c; b = 0; }
+        else if (h < 180) { r = 0; g = c; b = x; }
+        else if (h < 240) { r = 0; g = x; b = c; }
+        else if (h < 300) { r = x; g = 0; b = c; }
+        else { r = c; g = 0; b = x; }
+
+        r = Math.pow(r + m, 1 / 2.2);
+        g = Math.pow(g + m, 1 / 2.2);
+        b = Math.pow(b + m, 1 / 2.2);
+
+        return new Rgb565(Math.round((r + m) * 31), Math.round((g + m) * 63), Math.round((b + m) * 31));
     }
 
     toString() {
@@ -94,8 +119,9 @@ export class ColorPicker {
 
     set color(arg) {
         this.#color = arg;
-        console.log("setting color: ", this.#color);
-        this.element.querySelector("button").innerText = this.#color.toString();
+        const button = this.element.querySelector("button");
+        button.innerText = this.#color.toString();
+        button.style.backgroundColor = this.#color.rgb888().toString();
         this.dropDown.querySelector(".color-input").value = this.#color.toString();
     }
 
@@ -109,7 +135,7 @@ export class ColorPicker {
 
         const saturationCanvas = this.dropDown.querySelector(".saturation canvas");
         this.#drawSaturationStrip(saturationCanvas.getContext("2d"));
-        this.color = new Rgb565(Rgb888.fromHSV(this.#hue, this.#saturation, this.#value).value);
+        this.color = Rgb565.fromHSV(this.#hue, this.#saturation, this.#value);
     }
 
     get saturation() {
@@ -118,7 +144,7 @@ export class ColorPicker {
 
     set saturation(arg) {
         this.#saturation = arg;
-        this.color = new Rgb565(Rgb888.fromHSV(this.#hue, this.#saturation, this.#value).value);
+        this.color = Rgb565.fromHSV(this.#hue, this.#saturation, this.#value);
     }
 
     get value() {
@@ -127,80 +153,68 @@ export class ColorPicker {
 
     set value(arg) {
         this.#value = arg;
-        this.color = new Rgb565(Rgb888.fromHSV(this.#hue, this.#saturation, this.#value).value);
+        this.color = Rgb565.fromHSV(this.#hue, this.#saturation, this.#value);
     }
 
     #drawSaturationStrip(ctx) {
         const width = ctx.canvas.clientWidth;
         const height = ctx.canvas.clientHeight;
-        let buffer = new Uint16Array(width * height);
-
-        for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-                let color = Rgb888.fromHSV(this.hue, y / height, x / width);
-                buffer[y * width + x] = Rgb565.fromRgb888(color).value;
-            }
-        }
-
-
         let imageData = ctx.createImageData(width, height);
         let data = imageData.data;
-
-        for (let i = 0; i < buffer.length; i++) {
-            let color = new Rgb565(buffer[i]).rgb888();
-            let index = i * 4;
-            data[index] = color.red;
-            data[index + 1] = color.green;
-            data[index + 2] = color.blue;
-            data[index + 3] = 255;
+    
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                let color = Rgb565.fromHSV(this.hue, y / height, x / width).rgb888();
+                let index = (y * width + x) * 4;
+    
+                data[index] = color.red;
+                data[index + 1] = color.green;
+                data[index + 2] = color.blue;
+                data[index + 3] = 255;
+            }
         }
-
+    
         ctx.putImageData(imageData, 0, 0);
     }
 
     #drawHueStrip(ctx) {
         const width = ctx.canvas.clientWidth;
         const height = ctx.canvas.clientHeight;
-        let buffer = new Uint16Array(width * height);
-
+        let imageData = ctx.createImageData(width, height);
+        let data = imageData.data;
+    
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
                 let hue = (x / width) * 360;
-                let color = Rgb888.fromHSV(hue, 1, 1);
-                buffer[y * width + x] = Rgb565.fromRgb888(color).value;
+                let color = Rgb565.fromHSV(hue, 1, 1).rgb888();
+                let index = (y * width + x) * 4;
+    
+                data[index] = color.red;
+                data[index + 1] = color.green;
+                data[index + 2] = color.blue;
+                data[index + 3] = 255; // Альфа-канал
             }
         }
-
-
-        let imageData = ctx.createImageData(width, height);
-        let data = imageData.data;
-
-        for (let i = 0; i < buffer.length; i++) {
-            let color = new Rgb565(buffer[i]).rgb888();
-            let index = i * 4;
-            data[index] = color.red;
-            data[index + 1] = color.green;
-            data[index + 2] = color.blue;
-            data[index + 3] = 255;
-        }
-
+        
         ctx.putImageData(imageData, 0, 0);
     }
 
     constructor(elementWhereInsert, label) {
         this.element = document.createElement('div');
         this.element.innerHTML += `
-        <div class="color-picker">
-            <label>${label}</label>
-            <button>${this.color.toString()}</button>
-        </div>
+        <table class="color-picker">
+            <tr>
+                <td>${label}</td>
+                <td><button style="background-color: ${this.color.toString()}">${this.color.toString()}</button></td>
+            </tr>
+        </table>
         `;
 
         elementWhereInsert.appendChild(this.element);
         this.element.insertAdjacentHTML(
             'beforeend',
             `<div class="color-picker-dropdown">
-                <p>True RGB565 Color picker™</p>
+                <small>True RGB565 Color picker™</small>
                 <div class="saturation">
                     <div class="saturation-track"></div>
                     <canvas width="200" height="200">
@@ -210,7 +224,7 @@ export class ColorPicker {
                     <input type="range" min="0" max="360">
                     <canvas width="200" height="10"></canvas>
                 </div>
-                <input type="text" class="color-input" value="${this.color.toString()}" maxlength="7">
+                <input type="text" class="color-input" value="${this.color.toString()}" maxlength="5">
             </div>`
         );
 
