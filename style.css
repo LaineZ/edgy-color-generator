@@ -25,4 +25,47 @@ main {
     background-color: aqua;
     z-index: 2;
     width: 200px;
+    padding: 1em;
+}
+
+.color-picker-dropdown .hue {
+    position: relative;
+    height: 10px;
+}
+
+.color-picker-dropdown .hue canvas, .color-picker-dropdown .hue input {
+    position: absolute;
+    width: 100%;
+}
+
+.color-picker-dropdown .hue input {
+    top: 1px;
+    height: 5px;
+    z-index: 2;
+    opacity: 0;
+}
+
+.track {
+    position: absolute;
+    z-index: 1;
+    border-right: 4px solid black;
+    height: 10px;
+}
+
+.saturation {
+    position: relative;
+}
+
+.saturation-track {
+    position: absolute;
+    z-index: 2;
+    width: 8px;
+    height: 8px;
+    background-color: red;
+    border-radius: 100%;
+    opacity: 0.5;
+    top: 0;
+    left: 0;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
 }

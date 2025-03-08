@@ -78,6 +78,7 @@ impl<'a> App<'a> {
                 text::Alignment::Center,
                 style,
             );
+
             layout_builder.button("Increase", &FONT_6X9, move || {
                 *counter.borrow_mut() += 1;
             });

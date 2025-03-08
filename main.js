@@ -1,5 +1,5 @@
 import init from './pkg/edgy_color_generator.js';
-import { ColorPicker} from './classes/ColorPicker.js';
+import { ColorPicker } from './classes/ColorPicker.js';
 
 
 async function run() {
