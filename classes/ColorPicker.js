@@ -56,9 +56,9 @@ export class Rgb565 {
         if (green === undefined && blue === undefined) {
             this.value = redOrColor & 0xFFFF;
         } else {
-            this.red = (redOrColor >> 3) & 0x1F;
-            this.green = (green >> 2) & 0x3F;
-            this.blue = (blue >> 3) & 0x1F;
+            this.red = redOrColor;
+            this.green = green;
+            this.blue = blue;
             this.value = (this.red << 11) | (this.green << 5) | this.blue;
         }
     }
@@ -71,10 +71,15 @@ export class Rgb565 {
     }
 
     rgb888() {
-        const R8 = ( this.red * 527 + 23 ) >> 6;
-        const G8 = ( this.green * 259 + 33 ) >> 6;
-        const B8 = ( this.blue * 527 + 23 ) >> 6;
-        return new Rgb888(R8 * 2, G8 * 2, B8 * 2);
+        const redF = this.red / 31;
+        const greenF = this.green / 63;
+        const blueF = this.blue / 31;
+
+        const R8 = Math.round(redF * 255);
+        const G8 = Math.round(greenF * 255);
+        const B8 = Math.round(blueF * 255);
+    
+        return new Rgb888(R8, G8, B8);
     }
 
     static fromHSV(h, s, v) {
@@ -89,10 +94,6 @@ export class Rgb565 {
         else if (h < 240) { r = 0; g = x; b = c; }
         else if (h < 300) { r = x; g = 0; b = c; }
         else { r = c; g = 0; b = x; }
-
-        r = Math.pow(r + m, 1 / 2.2);
-        g = Math.pow(g + m, 1 / 2.2);
-        b = Math.pow(b + m, 1 / 2.2);
 
         return new Rgb565(Math.round((r + m) * 31), Math.round((g + m) * 63), Math.round((b + m) * 31));
     }
@@ -261,8 +262,8 @@ export class ColorPicker {
             track.style.top = `${y}px`;
             track.style.left = `${x}px`;
 
-            this.saturation = x / rect.width;
-            this.value = y / rect.height;
+            this.saturation = y / rect.width;
+            this.value = x / rect.height;
             (this.fnCallback)(this.color);
         });
 

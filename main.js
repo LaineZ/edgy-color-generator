@@ -1,5 +1,5 @@
 import init from './pkg/edgy_color_generator.js';
-import { ColorPicker } from './classes/ColorPicker.js';
+import { ColorPicker, Rgb565 } from './classes/ColorPicker.js';
 
 
 async function run() {
@@ -10,6 +10,9 @@ async function run() {
         for (const element of ["background1", "background2", "background3", "foreground1", "foreground2", "foreground3"]) {
             const picker = new ColorPicker(container, element);
         }
+
+        
+        console.log(Rgb565.fromHSV(120, 1, 1).rgb888());
     });
 }
 
