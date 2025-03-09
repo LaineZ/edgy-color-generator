@@ -112,6 +112,7 @@ export class ColorPicker {
     #saturation = 0;
     #value = 0;
     #saturationBoxMouseHold = false;
+    #hueBoxMouseHold = false;
     fnCallback = () => { };
 
     get color() {
@@ -181,6 +182,7 @@ export class ColorPicker {
     #drawHueStrip(ctx) {
         const width = ctx.canvas.clientWidth;
         const height = ctx.canvas.clientHeight;
+
         let imageData = ctx.createImageData(width, height);
         let data = imageData.data;
     
@@ -193,7 +195,7 @@ export class ColorPicker {
                 data[index] = color.red;
                 data[index + 1] = color.green;
                 data[index + 2] = color.blue;
-                data[index + 3] = 255; // Альфа-канал
+                data[index + 3] = 255;
             }
         }
         
@@ -222,8 +224,7 @@ export class ColorPicker {
                 </div>
                 <div class="hue">
                     <div class="track"></div>
-                    <input type="range" min="0" max="360">
-                    <canvas width="200" height="10"></canvas>
+                    <canvas width="200" height="20"></canvas>
                 </div>
                 <input type="text" class="color-input" value="${this.color.toString()}" maxlength="5">
             </div>`
@@ -239,11 +240,27 @@ export class ColorPicker {
             this.toggleDisplay();
         });
 
-        const hueStripRange = this.dropDown.querySelector(".hue input");
+        const hueStrip = this.dropDown.querySelector(".hue");
 
-        hueStripRange.addEventListener("input", (event) => {
-            this.hue = event.target.value;
+        hueStrip.addEventListener("mousemove", (event) => {
+            if (!this.#hueBoxMouseHold) {
+                return;
+            }
+
+            console.log("MOSUEMOVE!");
+
+            const rect = event.target.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            this.hue = Math.floor((x / rect.width) * 360.0);
             (this.fnCallback)(this.color);
+        });
+
+        hueStrip.addEventListener("mouseup", () => {
+            this.#hueBoxMouseHold = false;
+        });
+
+        hueStrip.addEventListener("mousedown", () => {
+            this.#hueBoxMouseHold = true;
         });
 
         const saturationCanvas = this.dropDown.querySelector(".saturation canvas");

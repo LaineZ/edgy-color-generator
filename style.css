@@ -139,7 +139,10 @@ input[type="text"] {
     position: absolute;
     z-index: 1;
     border-right: 4px solid var(--foreground);
-    height: 10px;
+    height: 25px;
+    top: -2px;
+    bottom: 2px;
+    pointer-events: none;
 }
 
 .saturation {
