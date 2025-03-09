@@ -1,23 +1,29 @@
-use std::{cell::{LazyCell, OnceCell, RefCell}, sync::{Arc, OnceLock}};
+use std::{
+    cell::RefCell,
+    sync::{Arc, OnceLock},
+};
 
 use edgy::{
     embedded_graphics::{
         mono_font::{ascii::FONT_6X9, MonoTextStyle},
-        pixelcolor::Rgb565,
+        pixelcolor::{raw::RawU16, Rgb565},
         prelude::*,
         text,
-    }, margin, widgets::{
+    },
+    margin,
+    widgets::{
         linear_layout::{LayoutAlignment, LinearLayoutBuilder},
         UiBuilder,
-    }, SystemEvent, Theme, UiContext
+    },
+    SystemEvent, Theme, UiContext,
 };
 use embedded_graphics_web_simulator::{
     display::WebSimulatorDisplay, output_settings::OutputSettingsBuilder,
 };
 use wasm_bindgen::prelude::*;
-use web_sys::{window, Element, MouseEvent};
+use web_sys::{js_sys, window, Element, Event, MouseEvent};
 
-static THEME: OnceLock<Theme<Rgb565>> = OnceLock::new();
+pub static THEME: OnceLock<Theme<Rgb565>> = OnceLock::new();
 
 #[macro_export]
 macro_rules! event_handler {
@@ -42,6 +48,7 @@ pub struct App<'a> {
 
 impl<'a> App<'a> {
     pub fn new(selector: Option<Element>) -> Self {
+        let theme = THEME.get_or_init(|| Theme::hope_diamond());
         let output_settings = OutputSettingsBuilder::new()
             .scale(SCALE)
             .pixel_spacing(0)
@@ -54,7 +61,7 @@ impl<'a> App<'a> {
         )));
 
         Self {
-            context: UiContext::new(display, Theme::hope_diamond()),
+            context: UiContext::new(display, *theme),
             counter: Arc::new(RefCell::new(0)),
         }
     }
@@ -64,7 +71,7 @@ impl<'a> App<'a> {
     pub fn update(&mut self) {
         let counter = self.counter.clone();
 
-        let style = MonoTextStyle::new(&FONT_6X9, Rgb565::WHITE);
+        let style = MonoTextStyle::new(&FONT_6X9, self.context.theme.foreground);
         let mut govno = {
             let mut layout_builder = LinearLayoutBuilder::default()
                 .horizontal_alignment(LayoutAlignment::Center)
@@ -117,11 +124,6 @@ fn query_selector(selector: &str) -> Option<Element> {
     document.query_selector(selector).unwrap()
 }
 
-#[wasm_bindgen]
-pub fn change_theme_color(key: &str, color: u16) {
-
-}
-
 // This is like the `main` function, except for JavaScript.
 #[wasm_bindgen(start)]
 pub fn main_js() -> Result<(), JsValue> {
@@ -154,7 +156,6 @@ pub fn main_js() -> Result<(), JsValue> {
     );
 
     let app_clone = app.clone();
-
     event_handler!(
         ".simulator-window canvas",
         "mousemove",
@@ -177,9 +178,56 @@ pub fn main_js() -> Result<(), JsValue> {
     event_handler!(
         "#debug-toggle",
         "click",
-        Closure::<dyn FnMut(web_sys::MouseEvent)>::new(move |event: MouseEvent| {
+        Closure::<dyn FnMut(web_sys::MouseEvent)>::new(move |_event: MouseEvent| {
             let mut borrow = app_clone.borrow_mut();
             borrow.context.debug_mode = !borrow.context.debug_mode;
+        })
+    );
+
+    let app_clone = app.clone();
+    event_handler!(
+        "body",
+        "colorChange",
+        Closure::<dyn FnMut(web_sys::Event)>::new(move |event: Event| {
+            if let Some(custom_event) = event.dyn_ref::<web_sys::CustomEvent>() {
+                let detail = js_sys::Object::from(custom_event.detail());
+
+                let key = js_sys::Reflect::get(&detail, &"key".into())
+                    .unwrap()
+                    .as_string()
+                    .unwrap_or_default();
+
+                let value = js_sys::Reflect::get(&detail, &"value".into())
+                    .unwrap()
+                    .as_f64()
+                    .unwrap_or_default();
+
+                let mut borrow = app_clone.borrow_mut();
+
+                match key.as_str() {
+                    "background" => {
+                        borrow.context.theme.background = RawU16::new(value as u16).into();
+                    }
+                    "background2" => {
+                        borrow.context.theme.background2 = RawU16::new(value as u16).into();
+                    }
+                    "background3" => {
+                        borrow.context.theme.background3 = RawU16::new(value as u16).into();
+                    }
+                    "foreground1" => {
+                        borrow.context.theme.foreground = RawU16::new(value as u16).into();
+                    }
+                    "foreground2" => {
+                        borrow.context.theme.foreground2 = RawU16::new(value as u16).into();
+                    }
+                    "foreground3" => {
+                        borrow.context.theme.foreground3 = RawU16::new(value as u16).into();
+                    }
+                    _ => {
+                        log::warn!("Unknown key for theme {}", key);
+                    }
+                }
+            }
         })
     );
 

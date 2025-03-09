@@ -165,7 +165,7 @@ export class ColorPicker {
     
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
-                let color = Rgb565.fromHSV(this.hue, y / height, x / width).rgb888();
+                let color = Rgb565.fromHSV(this.hue, x / height, y / width).rgb888();
                 let index = (y * width + x) * 4;
     
                 data[index] = color.red;
@@ -262,8 +262,8 @@ export class ColorPicker {
             track.style.top = `${y}px`;
             track.style.left = `${x}px`;
 
-            this.saturation = y / rect.width;
-            this.value = x / rect.height;
+            this.saturation = x / rect.width;
+            this.value = y / rect.height;
             (this.fnCallback)(this.color);
         });
 
