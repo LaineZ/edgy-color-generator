@@ -32,6 +32,28 @@ h1, h2, h3 {
     text-transform: lowercase;
 }
 
+a {
+    text-decoration: none;
+    color: var(--foreground);
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+header {
+    width: 100%;
+    background-color: var(--background2);
+    padding: 1em;
+    box-sizing: border-box;
+}
+
+header img {
+    width: 92px;
+    image-rendering: pixelated;
+    margin-right: 1em;
+}
+
 main {
     margin-left: auto;
     margin-right: auto;
@@ -103,6 +125,14 @@ input[type="text"] {
     height: 5px;
     z-index: 2;
     opacity: 0;
+}
+
+.header-content {
+    display: flex;
+    place-items: center;
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .track {

@@ -1,4 +1,4 @@
-use std::{cell::RefCell, sync::Arc};
+use std::{cell::{LazyCell, OnceCell, RefCell}, sync::{Arc, OnceLock}};
 
 use edgy::{
     embedded_graphics::{
@@ -16,6 +16,8 @@ use embedded_graphics_web_simulator::{
 };
 use wasm_bindgen::prelude::*;
 use web_sys::{window, Element, MouseEvent};
+
+static THEME: OnceLock<Theme<Rgb565>> = OnceLock::new();
 
 #[macro_export]
 macro_rules! event_handler {
@@ -113,6 +115,11 @@ fn query_selector(selector: &str) -> Option<Element> {
     let window = web_sys::window().expect("no global `window` exists");
     let document = window.document().expect("should have a document on window");
     document.query_selector(selector).unwrap()
+}
+
+#[wasm_bindgen]
+pub fn change_theme_color(key: &str, color: u16) {
+
 }
 
 // This is like the `main` function, except for JavaScript.

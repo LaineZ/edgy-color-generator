@@ -8,7 +8,10 @@ async function run() {
 
         const container = document.querySelector(".controls");
         for (const element of ["background1", "background2", "background3", "foreground1", "foreground2", "foreground3"]) {
-            const picker = new ColorPicker(container, element);
+            new ColorPicker(container, element).change((color) => {
+                const event = new CustomEvent("colorChange", { detail: { "key": element, value: color }});
+                window.dispatchEvent(event);
+            });
         }
 
         
