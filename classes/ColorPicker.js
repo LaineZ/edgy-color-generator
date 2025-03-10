@@ -1,18 +1,21 @@
 /**
  * RGB888 Class
  */
+import { rgb565_to_rgb888 } from '../pkg/edgy_color_generator.js';
 
 export class Rgb888 {
     constructor(redOrColor, green = undefined, blue = undefined) {
         if (green === undefined && blue === undefined) {
             this.value = redOrColor;
+            this.red = (this.value >> 16) & 0xFF;
+            this.green = (this.value >> 8) & 0xFF;
+            this.blue = this.value & 0xFF;
         } else {
+            this.red = redOrColor;
+            this.green = green;
+            this.blue = blue;
             this.value = (redOrColor << 16) | (green << 8) | blue;
         }
-
-        this.red = (this.value >> 16) & 0xFF;
-        this.green = (this.value >> 8) & 0xFF;
-        this.blue = this.value & 0xFF;
     }
 
     static fromHSV(h, s, v) {
@@ -70,16 +73,9 @@ export class Rgb565 {
         return new Rgb565((r5 << 11) | (g6 << 5) | b5);
     }
 
-    rgb888() {
-        const redF = this.red / 31;
-        const greenF = this.green / 63;
-        const blueF = this.blue / 31;
-
-        const R8 = Math.round(redF * 255);
-        const G8 = Math.round(greenF * 255);
-        const B8 = Math.round(blueF * 255);
-    
-        return new Rgb888(R8, G8, B8);
+    rgb888() {    
+        const color = rgb565_to_rgb888(this.value);
+        return new Rgb888(color);
     }
 
     static fromHSV(h, s, v) {
@@ -94,8 +90,37 @@ export class Rgb565 {
         else if (h < 240) { r = 0; g = x; b = c; }
         else if (h < 300) { r = x; g = 0; b = c; }
         else { r = c; g = 0; b = x; }
-
+        
         return new Rgb565(Math.round((r + m) * 31), Math.round((g + m) * 63), Math.round((b + m) * 31));
+    }
+
+    hsv() {
+        let r = this.red / 31;
+        let g = this.green / 63;
+        let b = this.blue / 31;
+
+        console.log(r, g, b);
+
+        let max = Math.max(r, g, b), min = Math.min(r, g, b);
+        let h = 0, s, v = max;
+        let d = max - min;
+
+        s = max === 0 ? 0 : d / max;
+
+        if (d !== 0) {
+            switch (max) {
+                case r: h = ((g - b) / d + (g < b ? 6 : 0)); break;
+                case g: h = ((b - r) / d + 2); break;
+                case b: h = ((r - g) / d + 4); break;
+            }
+            h *= 60;
+        }
+
+        return { 
+            h: h,
+            s: s,
+            v: v 
+        };
     }
 
     toString() {
@@ -125,6 +150,8 @@ export class ColorPicker {
         button.innerText = this.#color.toString();
         button.style.backgroundColor = this.#color.rgb888().toString();
         this.dropDown.querySelector(".color-input").value = this.#color.toString();
+        this.dropDown.querySelector(".color-input-rgb888").value = this.#color.rgb888().toString();
+        this.dropDown.querySelector(".hsv").innerText = `${this.hue}° ${this.saturation * 100}% ${this.value * 100}%`;
     }
 
     get hue() {
@@ -137,6 +164,7 @@ export class ColorPicker {
 
         const saturationCanvas = this.dropDown.querySelector(".saturation canvas");
         this.#drawSaturationStrip(saturationCanvas.getContext("2d"));
+
         this.color = Rgb565.fromHSV(this.#hue, this.#saturation, this.#value);
     }
 
@@ -146,6 +174,13 @@ export class ColorPicker {
 
     set saturation(arg) {
         this.#saturation = arg;
+        const saturationCanvas = this.dropDown.querySelector(".saturation canvas");
+        const rect = saturationCanvas.getBoundingClientRect();
+
+        const x = this.#saturation * rect.width;
+        const track = this.dropDown.querySelector(".saturation-track");
+        track.style.left = `${x}px`;
+
         this.color = Rgb565.fromHSV(this.#hue, this.#saturation, this.#value);
     }
 
@@ -155,6 +190,13 @@ export class ColorPicker {
 
     set value(arg) {
         this.#value = arg;
+        const saturationCanvas = this.dropDown.querySelector(".saturation canvas");
+
+        const rect = saturationCanvas.getBoundingClientRect();
+        const y = this.#value * rect.height;
+        const track = this.dropDown.querySelector(".saturation-track");
+        track.style.top = `${y}px`;
+
         this.color = Rgb565.fromHSV(this.#hue, this.#saturation, this.#value);
     }
 
@@ -166,7 +208,7 @@ export class ColorPicker {
     
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
-                let color = Rgb565.fromHSV(this.hue, x / height, y / width).rgb888();
+                let color = Rgb565.fromHSV(this.hue, x / width, y / height).rgb888();
                 let index = (y * width + x) * 4;
     
                 data[index] = color.red;
@@ -227,6 +269,8 @@ export class ColorPicker {
                     <canvas width="200" height="20"></canvas>
                 </div>
                 <input type="text" class="color-input" value="${this.color.toString()}" maxlength="5">
+                <input type="text" class="color-input-rgb888" value="${this.color.rgb888().toString()}" maxlength="5">
+                <small class="hsv">${this.hue}° ${this.saturation * 100}% ${this.value * 100}%</small>
             </div>`
         );
 
@@ -241,13 +285,10 @@ export class ColorPicker {
         });
 
         const hueStrip = this.dropDown.querySelector(".hue");
-
         hueStrip.addEventListener("mousemove", (event) => {
             if (!this.#hueBoxMouseHold) {
                 return;
             }
-
-            console.log("MOSUEMOVE!");
 
             const rect = event.target.getBoundingClientRect();
             const x = event.clientX - rect.left;
@@ -275,9 +316,6 @@ export class ColorPicker {
             const rect = event.target.getBoundingClientRect();
             const x = event.clientX - rect.left;
             const y = event.clientY - rect.top;
-            const track = this.dropDown.querySelector(".saturation-track");
-            track.style.top = `${y}px`;
-            track.style.left = `${x}px`;
 
             this.saturation = x / rect.width;
             this.value = y / rect.height;
@@ -290,6 +328,18 @@ export class ColorPicker {
 
         saturationCanvas.addEventListener("mousedown", () => {
             this.#saturationBoxMouseHold = true;
+        });
+
+        this.dropDown.querySelector(".color-input").addEventListener("change", (event) => {
+            const value = event.target.value;
+            const hsv = this.color.hsv();
+
+            this.hue = hsv.h;
+            this.saturation = hsv.s;
+            this.value = hsv.v;
+
+            this.color = new Rgb565(Number(value.replace("#", "0x")));
+            (this.fnCallback)(this.color);
         });
 
         window.addEventListener("closeOthers", (event) => {

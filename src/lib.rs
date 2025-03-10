@@ -6,7 +6,7 @@ use std::{
 use edgy::{
     embedded_graphics::{
         mono_font::{ascii::FONT_6X9, MonoTextStyle},
-        pixelcolor::{raw::RawU16, Rgb565},
+        pixelcolor::{raw::RawU16, Rgb565, Rgb888},
         prelude::*,
         text,
     },
@@ -122,6 +122,14 @@ fn query_selector(selector: &str) -> Option<Element> {
     let window = web_sys::window().expect("no global `window` exists");
     let document = window.document().expect("should have a document on window");
     document.query_selector(selector).unwrap()
+}
+
+#[wasm_bindgen]
+pub fn rgb565_to_rgb888(value: u16) -> u32 {
+    let rgb565: Rgb565 = RawU16::new(value).into();
+    let rgb888: Rgb888 = rgb565.into();
+
+    rgb888.into_storage()
 }
 
 // This is like the `main` function, except for JavaScript.
