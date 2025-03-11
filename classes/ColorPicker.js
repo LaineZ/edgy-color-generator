@@ -148,10 +148,12 @@ export class ColorPicker {
         this.#color = arg;
         const button = this.element.querySelector("button");
         button.innerText = this.#color.toString();
-        button.style.backgroundColor = this.#color.rgb888().toString();
+
+        const rgb888 = this.#color.rgb888();
+        button.style.backgroundColor = `rgb(${rgb888.red}, ${rgb888.green}, ${rgb888.blue})`;
         this.dropDown.querySelector(".color-input").value = this.#color.toString();
         this.dropDown.querySelector(".color-input-rgb888").value = this.#color.rgb888().toString();
-        this.dropDown.querySelector(".hsv").innerText = `${this.hue}° ${this.saturation * 100}% ${this.value * 100}%`;
+        this.dropDown.querySelector(".hsv").innerText = `${Math.floor(this.hue)}° ${Math.floor(this.saturation * 100)}% ${Math.floor(this.value * 100)}%`;
     }
 
     get hue() {
@@ -333,6 +335,8 @@ export class ColorPicker {
         this.dropDown.querySelector(".color-input").addEventListener("change", (event) => {
             const value = event.target.value;
             const hsv = this.color.hsv();
+
+            console.log(hsv);
 
             this.hue = hsv.h;
             this.saturation = hsv.s;
