@@ -53,11 +53,15 @@ export class Rgb565 {
 
     red = 0;
     green = 0;
-    blue = 0;
-
+    blue = 0;   
+    
     constructor(redOrColor, green = undefined, blue = undefined) {
         if (green === undefined && blue === undefined) {
             this.value = redOrColor & 0xFFFF;
+            this.red = (this.value >> 11) & 0x1F;
+            this.green = (this.value >> 5) & 0x3F;
+            this.blue = this.value & 0x1F;
+            console.log(this.value.toString(16), this.red, this.green, this.blue);
         } else {
             this.red = redOrColor;
             this.green = green;
@@ -99,8 +103,6 @@ export class Rgb565 {
         let g = this.green / 63;
         let b = this.blue / 31;
 
-        console.log(r, g, b);
-
         let max = Math.max(r, g, b), min = Math.min(r, g, b);
         let h = 0, s, v = max;
         let d = max - min;
@@ -139,6 +141,123 @@ export class ColorPicker {
     #saturationBoxMouseHold = false;
     #hueBoxMouseHold = false;
     fnCallback = () => { };
+
+    constructor(elementWhereInsert, label, color) {
+        this.element = document.createElement('div');
+        this.element.innerHTML += `
+        <table class="color-picker">
+            <tr>
+                <td>${label}</td>
+                <td><button style="background-color: ${this.color.toString()}">${this.color.toString()}</button></td>
+            </tr>
+        </table>
+        `;
+
+        elementWhereInsert.appendChild(this.element);
+        this.element.insertAdjacentHTML(
+            'beforeend',
+            `<div class="color-picker-dropdown">
+                <small>True RGB565 Color picker™</small>
+                <div class="saturation">
+                    <div class="saturation-track"></div>
+                    <canvas width="200" height="200">
+                </div>
+                <div class="hue">
+                    <div class="track"></div>
+                    <canvas width="200" height="20"></canvas>
+                </div>
+                <input type="text" class="color-input" value="${this.color.toString()}" maxlength="5">
+                <input type="text" class="color-input-rgb888" readonly value="${this.color.rgb888().toString()}" maxlength="5">
+                <small class="hsv">${this.hue}° ${this.saturation * 100}% ${this.value * 100}%</small>
+            </div>`
+        );
+
+        this.dropDown = this.element.querySelector(".color-picker-dropdown");
+
+        const hueCanvas = this.dropDown.querySelector(".hue canvas");
+        this.#drawHueStrip(hueCanvas.getContext("2d"));
+
+        const openColorPickerButton = this.element.querySelector("button");
+        openColorPickerButton.addEventListener("click", () => {
+            this.toggleDisplay();
+        });
+
+        const hueStrip = this.dropDown.querySelector(".hue");
+        hueStrip.addEventListener("mousemove", (event) => {
+            if (!this.#hueBoxMouseHold) {
+                return;
+            }
+
+            const rect = event.target.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            this.hue = Math.floor((x / rect.width) * 360.0);
+            (this.fnCallback)(this.color);
+        });
+
+        hueStrip.addEventListener("mouseup", () => {
+            this.#hueBoxMouseHold = false;
+        });
+
+        hueStrip.addEventListener("mouseleave", () => {
+            this.#hueBoxMouseHold = false;
+        });
+
+        hueStrip.addEventListener("mousedown", () => {
+            this.#hueBoxMouseHold = true;
+        });
+
+        const saturationCanvas = this.dropDown.querySelector(".saturation canvas");
+
+        const ctx = saturationCanvas.getContext("2d");
+        this.#drawSaturationStrip(ctx);
+
+        saturationCanvas.addEventListener("mousemove", (event) => {
+            if (!this.#saturationBoxMouseHold) {
+                return;
+            }
+            const rect = event.target.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+
+            this.saturation = x / rect.width;
+            this.value = y / rect.height;
+            (this.fnCallback)(this.color);
+        });
+
+        saturationCanvas.addEventListener("mouseup", () => {
+            this.#saturationBoxMouseHold = false;
+        });
+
+        saturationCanvas.addEventListener("mouseleave", () => {
+            this.#saturationBoxMouseHold = false;
+        });
+
+        saturationCanvas.addEventListener("mousedown", () => {
+            this.#saturationBoxMouseHold = true;
+        });
+
+        this.dropDown.querySelector(".color-input").addEventListener("change", (event) => {
+            const value = event.target.value;
+            this.color = new Rgb565(Number(value.replace("#", "0x")));
+            const hsv = this.color.hsv();
+
+            this.hue = hsv.h;
+            this.saturation = hsv.s;
+            this.value = hsv.v;
+
+            (this.fnCallback)(this.color);
+        });
+
+        window.addEventListener("closeOthers", (event) => {
+            if (event.detail != this) {
+                this.hide();
+            }
+        });
+
+
+        this.hide();
+        this.color = color;
+    }
 
     get color() {
         return this.#color;
@@ -244,116 +363,6 @@ export class ColorPicker {
         }
         
         ctx.putImageData(imageData, 0, 0);
-    }
-
-    constructor(elementWhereInsert, label) {
-        this.element = document.createElement('div');
-        this.element.innerHTML += `
-        <table class="color-picker">
-            <tr>
-                <td>${label}</td>
-                <td><button style="background-color: ${this.color.toString()}">${this.color.toString()}</button></td>
-            </tr>
-        </table>
-        `;
-
-        elementWhereInsert.appendChild(this.element);
-        this.element.insertAdjacentHTML(
-            'beforeend',
-            `<div class="color-picker-dropdown">
-                <small>True RGB565 Color picker™</small>
-                <div class="saturation">
-                    <div class="saturation-track"></div>
-                    <canvas width="200" height="200">
-                </div>
-                <div class="hue">
-                    <div class="track"></div>
-                    <canvas width="200" height="20"></canvas>
-                </div>
-                <input type="text" class="color-input" value="${this.color.toString()}" maxlength="5">
-                <input type="text" class="color-input-rgb888" value="${this.color.rgb888().toString()}" maxlength="5">
-                <small class="hsv">${this.hue}° ${this.saturation * 100}% ${this.value * 100}%</small>
-            </div>`
-        );
-
-        this.dropDown = this.element.querySelector(".color-picker-dropdown");
-
-        const hueCanvas = this.dropDown.querySelector(".hue canvas");
-        this.#drawHueStrip(hueCanvas.getContext("2d"));
-
-        const openColorPickerButton = this.element.querySelector("button");
-        openColorPickerButton.addEventListener("click", () => {
-            this.toggleDisplay();
-        });
-
-        const hueStrip = this.dropDown.querySelector(".hue");
-        hueStrip.addEventListener("mousemove", (event) => {
-            if (!this.#hueBoxMouseHold) {
-                return;
-            }
-
-            const rect = event.target.getBoundingClientRect();
-            const x = event.clientX - rect.left;
-            this.hue = Math.floor((x / rect.width) * 360.0);
-            (this.fnCallback)(this.color);
-        });
-
-        hueStrip.addEventListener("mouseup", () => {
-            this.#hueBoxMouseHold = false;
-        });
-
-        hueStrip.addEventListener("mousedown", () => {
-            this.#hueBoxMouseHold = true;
-        });
-
-        const saturationCanvas = this.dropDown.querySelector(".saturation canvas");
-
-        const ctx = saturationCanvas.getContext("2d");
-        this.#drawSaturationStrip(ctx);
-
-        saturationCanvas.addEventListener("mousemove", (event) => {
-            if (!this.#saturationBoxMouseHold) {
-                return;
-            }
-            const rect = event.target.getBoundingClientRect();
-            const x = event.clientX - rect.left;
-            const y = event.clientY - rect.top;
-
-            this.saturation = x / rect.width;
-            this.value = y / rect.height;
-            (this.fnCallback)(this.color);
-        });
-
-        saturationCanvas.addEventListener("mouseup", () => {
-            this.#saturationBoxMouseHold = false;
-        });
-
-        saturationCanvas.addEventListener("mousedown", () => {
-            this.#saturationBoxMouseHold = true;
-        });
-
-        this.dropDown.querySelector(".color-input").addEventListener("change", (event) => {
-            const value = event.target.value;
-            const hsv = this.color.hsv();
-
-            console.log(hsv);
-
-            this.hue = hsv.h;
-            this.saturation = hsv.s;
-            this.value = hsv.v;
-
-            this.color = new Rgb565(Number(value.replace("#", "0x")));
-            (this.fnCallback)(this.color);
-        });
-
-        window.addEventListener("closeOthers", (event) => {
-            if (event.detail != this) {
-                this.hide();
-            }
-        });
-
-
-        this.hide();
     }
 
     change(fnCallback) {

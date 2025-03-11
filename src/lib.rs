@@ -8,22 +8,35 @@ use edgy::{
         mono_font::{ascii::FONT_6X9, MonoTextStyle},
         pixelcolor::{raw::RawU16, Rgb565, Rgb888},
         prelude::*,
+        primitives::PrimitiveStyle,
         text,
     },
     margin,
     widgets::{
-        linear_layout::{LayoutAlignment, LinearLayoutBuilder},
-        UiBuilder,
+        grid_layout::GridLayoutBuilder,
+        linear_layout::{LayoutAlignment, LayoutDirection, LinearLayoutBuilder},
+        UiBuilder, WidgetObj,
     },
     SystemEvent, Theme, UiContext,
 };
+
 use embedded_graphics_web_simulator::{
     display::WebSimulatorDisplay, output_settings::OutputSettingsBuilder,
 };
+use log::info;
 use wasm_bindgen::prelude::*;
-use web_sys::{js_sys, window, Element, Event, MouseEvent};
+use web_sys::{
+    js_sys::{self, Reflect},
+    window, Element, Event, MouseEvent,
+};
 
 pub static THEME: OnceLock<Theme<Rgb565>> = OnceLock::new();
+const SCALE: u32 = 2;
+
+fn get_current_theme() -> Theme<Rgb565> {
+    let theme = THEME.get_or_init(|| Theme::hope_diamond());
+    *theme
+}
 
 #[macro_export]
 macro_rules! event_handler {
@@ -41,66 +54,191 @@ macro_rules! event_handler {
     }};
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Page {
+    Counter,
+    Bands,
+}
+
 pub struct App<'a> {
     context: UiContext<'a, WebSimulatorDisplay<Rgb565>, Rgb565>,
     counter: Arc<RefCell<usize>>,
+    page: Arc<RefCell<Page>>,
 }
 
 impl<'a> App<'a> {
     pub fn new(selector: Option<Element>) -> Self {
-        let theme = THEME.get_or_init(|| Theme::hope_diamond());
         let output_settings = OutputSettingsBuilder::new()
             .scale(SCALE)
             .pixel_spacing(0)
             .build();
 
         let display = Box::leak(Box::new(WebSimulatorDisplay::<Rgb565>::new(
-            (160, 128),
+            (170, 128),
             &output_settings,
             selector.as_ref(),
         )));
 
         Self {
-            context: UiContext::new(display, *theme),
+            context: UiContext::new(display, get_current_theme()),
             counter: Arc::new(RefCell::new(0)),
+            page: Arc::new(RefCell::new(Page::Counter)),
         }
     }
 
     pub fn setup(&mut self) {}
 
-    pub fn update(&mut self) {
+    fn counter(&mut self) -> WidgetObj<'a, WebSimulatorDisplay<Rgb565>, Rgb565> {
+        let mut layout_builder = LinearLayoutBuilder::default()
+            .horizontal_alignment(LayoutAlignment::Center)
+            .vertical_alignment(LayoutAlignment::Center);
+        let style = MonoTextStyle::new(&FONT_6X9, self.context.theme.foreground);
         let counter = self.counter.clone();
 
+        layout_builder.label(
+            format!("Counter {}", counter.borrow()),
+            text::Alignment::Center,
+            style,
+        );
+
+        layout_builder.margin_layout(margin!(5), |ui| {
+            ui.button("Increase", &FONT_6X9, move || {
+                *counter.borrow_mut() += 1;
+            });
+        });
+
+        let counter = self.counter.clone();
+        layout_builder.margin_layout(margin!(5), |ui| {
+            ui.button("Decrease", &FONT_6X9, move || {
+                *counter.borrow_mut() -= 1;
+            });
+        });
+
+        layout_builder.finish()
+    }
+
+    fn bands(&mut self) -> WidgetObj<'a, WebSimulatorDisplay<Rgb565>, Rgb565> {
+        let mut layout_builder = LinearLayoutBuilder::default()
+            .direction(LayoutDirection::Horizontal)
+            .horizontal_alignment(LayoutAlignment::Stretch)
+            .vertical_alignment(LayoutAlignment::Stretch);
         let style = MonoTextStyle::new(&FONT_6X9, self.context.theme.foreground);
-        let mut govno = {
-            let mut layout_builder = LinearLayoutBuilder::default()
-                .horizontal_alignment(LayoutAlignment::Center)
-                .vertical_alignment(LayoutAlignment::Center);
 
-            layout_builder.label(
-                format!("Counter {}", counter.borrow()),
-                text::Alignment::Center,
-                style,
-            );
+        layout_builder.margin_layout_styled(
+            margin!(0),
+            PrimitiveStyle::with_fill(self.context.theme.background),
+            |ui| {
+                ui.label("fg", text::Alignment::Left, style);
+            },
+        );
 
-            layout_builder.margin_layout(margin!(5), |ui| {
-                ui.button("Increase", &FONT_6X9, move || {
-                    *counter.borrow_mut() += 1;
-                });
-            });
+        layout_builder.margin_layout_styled(
+            margin!(0),
+            PrimitiveStyle::with_fill(self.context.theme.background2),
+            |ui| {
+                ui.label("fg", text::Alignment::Left, style);
+            },
+        );
 
-            let counter = self.counter.clone();
-            layout_builder.margin_layout(margin!(5), |ui| {
-                ui.button("Decrease", &FONT_6X9, move || {
-                    *counter.borrow_mut() -= 1;
-                });
-            });
+        layout_builder.margin_layout_styled(
+            margin!(0),
+            PrimitiveStyle::with_fill(self.context.theme.background3),
+            |ui| {
+                ui.label("fg", text::Alignment::Left, style);
+            },
+        );
 
-            layout_builder.finish()
+        let style = MonoTextStyle::new(&FONT_6X9, self.context.theme.foreground2);
+
+        layout_builder.margin_layout_styled(
+            margin!(0),
+            PrimitiveStyle::with_fill(self.context.theme.background),
+            |ui| {
+                ui.label("fg2", text::Alignment::Left, style);
+            },
+        );
+
+        layout_builder.margin_layout_styled(
+            margin!(0),
+            PrimitiveStyle::with_fill(self.context.theme.background2),
+            |ui| {
+                ui.label("fg2", text::Alignment::Left, style);
+            },
+        );
+
+        layout_builder.margin_layout_styled(
+            margin!(0),
+            PrimitiveStyle::with_fill(self.context.theme.background3),
+            |ui| {
+                ui.label("fg2", text::Alignment::Left, style);
+            },
+        );
+
+        let style = MonoTextStyle::new(&FONT_6X9, self.context.theme.foreground3);
+
+        layout_builder.margin_layout_styled(
+            margin!(0),
+            PrimitiveStyle::with_fill(self.context.theme.background),
+            |ui| {
+                ui.label("fg3", text::Alignment::Left, style);
+            },
+        );
+
+        layout_builder.margin_layout_styled(
+            margin!(0),
+            PrimitiveStyle::with_fill(self.context.theme.background2),
+            |ui| {
+                ui.label("fg3", text::Alignment::Left, style);
+            },
+        );
+
+        layout_builder.margin_layout_styled(
+            margin!(0),
+            PrimitiveStyle::with_fill(self.context.theme.background3),
+            |ui| {
+                ui.label("fg3", text::Alignment::Left, style);
+            },
+        );
+
+        layout_builder.finish()
+    }
+
+    pub fn update(&mut self) {
+        let mut grid = GridLayoutBuilder::default()
+            .add_column(100)
+            .add_row(80)
+            .add_row(20);
+
+        let page = self.page.clone();
+        let page_value = *self.page.borrow();
+
+        let layout = match page_value {
+            Page::Counter => self.counter(),
+            Page::Bands => self.bands(),
         };
 
+        grid.add_widget_obj(layout);
+
+        grid.horizontal_linear_layout(LayoutAlignment::Stretch, move |ui| {
+            let page = page.clone();
+            let page2 = page.clone();
+
+            ui.toggle_button(
+                "COUNTER",
+                &FONT_6X9,
+                page_value == Page::Counter,
+                move |_| {
+                    *page.borrow_mut() = Page::Counter;
+                },
+            );
+
+            ui.toggle_button("BANDS", &FONT_6X9, page_value == Page::Bands, move |_| {
+                *page2.borrow_mut() = Page::Bands;
+            });
+        });
+
         self.context.draw_target.clear(Rgb565::BLACK).unwrap();
-        self.context.update(&mut govno);
+        self.context.update(&mut grid.finish());
         self.context.draw_target.flush().expect("Couldn't update");
     }
 
@@ -116,8 +254,6 @@ fn request_animation_frame(f: &Closure<dyn FnMut()>) {
         .expect("should register `requestAnimationFrame` OK");
 }
 
-const SCALE: u32 = 2;
-
 fn query_selector(selector: &str) -> Option<Element> {
     let window = web_sys::window().expect("no global `window` exists");
     let document = window.document().expect("should have a document on window");
@@ -130,6 +266,51 @@ pub fn rgb565_to_rgb888(value: u16) -> u32 {
     let rgb888: Rgb888 = rgb565.into();
 
     rgb888.into_storage()
+}
+
+#[wasm_bindgen]
+pub fn get_theme_colors() -> JsValue {
+    let obj = js_sys::Object::new();
+    let theme = get_current_theme();
+
+    Reflect::set(
+        &obj,
+        &JsValue::from_str("background"),
+        &JsValue::from(theme.background.into_storage()),
+    )
+    .unwrap();
+    Reflect::set(
+        &obj,
+        &JsValue::from_str("background2"),
+        &JsValue::from(theme.background2.into_storage()),
+    )
+    .unwrap();
+    Reflect::set(
+        &obj,
+        &JsValue::from_str("background3"),
+        &JsValue::from(theme.background3.into_storage()),
+    )
+    .unwrap();
+    Reflect::set(
+        &obj,
+        &JsValue::from_str("foreground"),
+        &JsValue::from(theme.foreground.into_storage()),
+    )
+    .unwrap();
+    Reflect::set(
+        &obj,
+        &JsValue::from_str("foreground2"),
+        &JsValue::from(theme.foreground2.into_storage()),
+    )
+    .unwrap();
+    Reflect::set(
+        &obj,
+        &JsValue::from_str("foreground3"),
+        &JsValue::from(theme.foreground3.into_storage()),
+    )
+    .unwrap();
+
+    obj.into()
 }
 
 // This is like the `main` function, except for JavaScript.
