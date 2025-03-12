@@ -4,6 +4,7 @@
 <head>
   <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
   <link rel="stylesheet" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Edgy: Theme Editor</title>
 </head>
 
@@ -20,12 +21,25 @@
   <main>
     <div class="simulator-window">
       <h3>Preview:</h3>
-      <button id="debug-toggle">Debug</button>
+      <div style="display: flex;">
+        <button id="debug-toggle" title="Toggle edgy internal debug mode">Debug</button>
+        <button id="invert-toggle" title="Inverts colors on display">Invert</button>
+      </div>
     </div>
     <aside>
-      <h3>Options:</h3>
+      <h3>theme:</h3>
       <div class="controls">
 
+      </div>
+
+      <h3>display:</h3>
+      <div class="view-controls">
+        <p id="brightness-value">brightness 100%</p>
+        <input id="display-brightness" type="range" min="10" max="400" value="100">
+        <p id="contrast-value">contrast 100%</p>
+        <input id="display-contrast" type="range" min="0" max="200" value="100">
+        <p id="saturate-value">saturate 100%</p>
+        <input id="display-saturate" type="range" min="50" max="200" value="100">
       </div>
     </aside>
   </main>

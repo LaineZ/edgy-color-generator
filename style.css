@@ -163,3 +163,14 @@ input[type="text"] {
     transform: translate(-50%, -50%);
     pointer-events: none;
 }
+
+.view-controls input {
+    width: 100%;
+}
+
+
+@media (max-width: 620px) {
+    main {
+        flex-direction: column;
+    }
+}

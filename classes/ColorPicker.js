@@ -255,8 +255,13 @@ export class ColorPicker {
         });
 
 
-        this.hide();
         this.color = color;
+        const hsv = this.color.hsv();
+
+        this.hue = hsv.h;
+        this.saturation = hsv.s;
+        this.value = hsv.v;
+        this.hide();
     }
 
     get color() {
