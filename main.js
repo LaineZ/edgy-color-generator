@@ -5,7 +5,9 @@ import { Filters } from './classes/Filters.js';
 
 
 function registerFilterProp(filters, prop) {
-    document.querySelector(`#display-${prop}`).addEventListener("input", (event) => {
+    const element = document.querySelector(`#display-${prop}`);
+    element.value = 100;
+    element.addEventListener("input", (event) => {
         const value = event.target.value;
         filters.setFilter(prop, value);
 

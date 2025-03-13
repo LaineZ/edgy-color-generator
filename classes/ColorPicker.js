@@ -35,7 +35,7 @@ export class Rgb888 {
     }
 
     toString() {
-        return `#${this.value.toString(16).toUpperCase().padEnd(6, '0')}`;
+        return `#${this.value.toString(16).toUpperCase().padStart(6, '0')}`;
     }
 }
 
@@ -53,8 +53,8 @@ export class Rgb565 {
 
     red = 0;
     green = 0;
-    blue = 0;   
-    
+    blue = 0;
+
     constructor(redOrColor, green = undefined, blue = undefined) {
         if (green === undefined && blue === undefined) {
             this.value = redOrColor & 0xFFFF;
@@ -77,7 +77,7 @@ export class Rgb565 {
         return new Rgb565((r5 << 11) | (g6 << 5) | b5);
     }
 
-    rgb888() {    
+    rgb888() {
         const color = rgb565_to_rgb888(this.value);
         return new Rgb888(color);
     }
@@ -94,7 +94,7 @@ export class Rgb565 {
         else if (h < 240) { r = 0; g = x; b = c; }
         else if (h < 300) { r = x; g = 0; b = c; }
         else { r = c; g = 0; b = x; }
-        
+
         return new Rgb565(Math.round((r + m) * 31), Math.round((g + m) * 63), Math.round((b + m) * 31));
     }
 
@@ -118,15 +118,15 @@ export class Rgb565 {
             h *= 60;
         }
 
-        return { 
+        return {
             h: h,
             s: s,
-            v: v 
+            v: v
         };
     }
 
     toString() {
-        return `#${this.value.toString(16).toUpperCase().padEnd(4, '0')}`;
+        return `#${this.value.toString(16).toUpperCase().padStart(4, '0')}`;
     }
 }
 
@@ -141,6 +141,10 @@ export class ColorPicker {
     #saturationBoxMouseHold = false;
     #hueBoxMouseHold = false;
     fnCallback = () => { };
+
+    get isShown() {
+        this.dropDown.style.display != "none";
+    }
 
     constructor(elementWhereInsert, label, color) {
         this.element = document.createElement('div');
@@ -167,7 +171,7 @@ export class ColorPicker {
                     <canvas width="200" height="20"></canvas>
                 </div>
                 <input type="text" class="color-input" value="${this.color.toString()}" maxlength="5">
-                <input type="text" class="color-input-rgb888" readonly value="${this.color.rgb888().toString()}" maxlength="5">
+                <input type="text" class="color-input-rgb888" value="${this.color.rgb888().toString()}" maxlength="7">
                 <small class="hsv">${this.hue}° ${this.saturation * 100}% ${this.value * 100}%</small>
             </div>`
         );
@@ -178,7 +182,8 @@ export class ColorPicker {
         this.#drawHueStrip(hueCanvas.getContext("2d"));
 
         const openColorPickerButton = this.element.querySelector("button");
-        openColorPickerButton.addEventListener("click", () => {
+        openColorPickerButton.addEventListener("click", (event) => {
+            event.stopPropagation();
             this.toggleDisplay();
         });
 
@@ -248,11 +253,31 @@ export class ColorPicker {
             (this.fnCallback)(this.color);
         });
 
+        this.dropDown.querySelector(".color-input-rgb888").addEventListener("change", (event) => {
+            const value = event.target.value;
+            this.color = Rgb565.fromRgb888(new Rgb888(Number(value.replace("#", "0x"))));
+            const hsv = this.color.hsv();
+
+            this.hue = hsv.h;
+            this.saturation = hsv.s;
+            this.value = hsv.v;
+
+            (this.fnCallback)(this.color);
+        });
+        
+
         window.addEventListener("closeOthers", (event) => {
             if (event.detail != this) {
                 this.hide();
             }
         });
+
+
+        window.addEventListener("click", (event) => {
+            if (!this.dropDown.contains(event.target)) {
+                this.hide();
+            }
+        })
 
 
         this.color = color;
@@ -331,19 +356,19 @@ export class ColorPicker {
         const height = ctx.canvas.clientHeight;
         let imageData = ctx.createImageData(width, height);
         let data = imageData.data;
-    
+
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
                 let color = Rgb565.fromHSV(this.hue, x / width, y / height).rgb888();
                 let index = (y * width + x) * 4;
-    
+
                 data[index] = color.red;
                 data[index + 1] = color.green;
                 data[index + 2] = color.blue;
                 data[index + 3] = 255;
             }
         }
-    
+
         ctx.putImageData(imageData, 0, 0);
     }
 
@@ -353,20 +378,20 @@ export class ColorPicker {
 
         let imageData = ctx.createImageData(width, height);
         let data = imageData.data;
-    
+
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
                 let hue = (x / width) * 360;
                 let color = Rgb565.fromHSV(hue, 1, 1).rgb888();
                 let index = (y * width + x) * 4;
-    
+
                 data[index] = color.red;
                 data[index + 1] = color.green;
                 data[index + 2] = color.blue;
                 data[index + 3] = 255;
             }
         }
-        
+
         ctx.putImageData(imageData, 0, 0);
     }
 
